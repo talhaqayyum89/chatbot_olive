@@ -3,5 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/LaMini-T5-738M" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Llama-2-7B-Chat-GGML" vcs="Git" />
   </component>
 </project>

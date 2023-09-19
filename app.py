@@ -7,10 +7,13 @@ from langchain.vectorstores import Chroma
 from langchain.llms import HuggingFacePipeline
 from langchain.chains import RetrievalQA
 from constants import CHROMA_SETTINGS
+from langchain.memory import ConversationBufferMemory
+from langchain import PromptTemplate
+
 
 device = torch.device('cpu')
-
 checkpoint = "MBZUAI/LaMini-T5-738M"
+# checkpoint = 'TheBloke/Llama-2-7B-Chat-GGML'
 print(f"Checkpoint path: {checkpoint}")  # Add this line for debugging
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 base_model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -39,9 +42,38 @@ def llm_pipeline():
 def qa_llm():
     llm = llm_pipeline()
     embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    # embeddings = SentenceTransformerEmbeddings(model_name="all-mpnet-base-v2")
     db = Chroma(persist_directory="db", embedding_function=embeddings, client_settings=CHROMA_SETTINGS)
     retriever = db.as_retriever()
-    qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever, return_source_documents=True)
+    template = """
+    Use the following context (delimited by <ctx></ctx>) and the chat history (delimited by <hs></hs>) to answer the question:
+    ------
+    <ctx>
+    {context}
+    </ctx>
+    ------
+    <hs>
+    {history}
+    </hs>
+    ------
+    {question}
+    Answer:
+    """
+    prompt = PromptTemplate(
+        input_variables=["history", "context", "question"],
+        template=template,
+    )
+    memory = ConversationBufferMemory(
+        memory_key="history",
+        input_key="question"
+    )
+    qa = RetrievalQA.from_chain_type(llm=llm,
+                                     chain_type="stuff",
+                                     retriever=retriever,
+                                     return_source_documents=True,
+                                     chain_type_kwargs={
+                                                  "prompt": prompt,
+                                                  "memory": memory})
     return qa
 
 
@@ -62,11 +94,11 @@ def process_answer(instruction):
 
 
 def main():
-    st.title("Search Your PDF 🐦📄")
-    with st.expander("About the App"):
+    st.title("Olive Customer Support Chat Bot 📄")
+    with st.expander("Ask About the App"):
         st.markdown(
             """
-            This is a Generative AI powered Question and Answering app that responds to questions about your PDF File.
+            This is a Generative AI powered Question and Answering app that responds to questions about Olive Payroll.
             """
         )
     question = st.text_area("Enter your Question")
